@@ -83,7 +83,7 @@ class Level {
 
     actorAt(actor) {
         if (!(actor instanceof Actor)) {
-            throw new Error('Передан прализованный объект Actor');
+            throw new Error('Передаваемый объект должен быть подвижным');
         }
             return this.actors.find(el => el.isIntersect(actor));
     }
@@ -101,9 +101,9 @@ class Level {
             return 'lava';
         }
 
-        for (let i = top; i < bottom; i++) {
-            for (let k = left; k < right; k++) {
-                const cell = this.grid[i][k];
+        for (let horizontalBoundary = top; horizontalBoundary < bottom; horizontalBoundary++) {
+            for (let verticalBoundary = left; verticalBoundary < right; verticalBoundary++) {
+                const cell = this.grid[horizontalBoundary][verticalBoundary];
                 if (cell) {
                     return cell;
                 }
@@ -123,20 +123,18 @@ class Level {
         return !this.actors.some(el => el.type === type);
     }
 
-    // Проверка пересечения объектов
     playerTouched(obstacle, actor) {
         if (this.status !== null) {
             return;
         }
 
         if ((obstacle === 'lava') || (obstacle === 'fireball')) {
-            //this.status = 'won'; //  читерский режим - должно сработать
             this.status = 'lost';
         }else if ((obstacle === 'coin') && (actor.type === 'coin')) {
             this.removeActor(actor);
 
             if (this.noMoreActors('coin')) {
-                this.status = 'won'; //yay!
+                this.status = 'won';
             }
         }
     }
@@ -165,11 +163,11 @@ class LevelParser {
     }
 
     createActors(plan) {
-        return plan.reduce((memo, el, i) => {
-            el.split('').forEach((item, j) => {
+        return plan.reduce((memo, el, yPosElement) => {
+            el.split('').forEach((item, xPosElement) => {
                 const makeActor = this.actorFromSymbol(item);
                     if (typeof makeActor === 'function') {
-                        const obj = new makeActor(new Vector(j, i));
+                        const obj = new makeActor(new Vector(xPosElement, yPosElement));
                         if (obj instanceof Actor) {
                             memo.push(obj);
                             return memo;
@@ -185,7 +183,7 @@ class LevelParser {
     }
 }
 
-// "Абстрактный" класс для фаерболов или фаерскэров =)
+// "Абстрактный" класс для подвижных врагов
 class Fireball extends Actor {
     constructor(position = new Vector(0, 0), speed = new Vector(0, 0)) {
         super(position, new Vector(1, 1), speed);
@@ -226,20 +224,18 @@ class VerticalFireball extends Fireball {
     }
 }
 
-// Самая бесячая штука
 class FireRain extends Fireball {
     constructor(position = new Vector(0, 0)) {
         super(position, new Vector(0, 3));
         this.initialpos = position;
     }
 
-    // Отличительная особенность - возврат на исходную позицию (эффект падающего дождя)
     handleObstacle() {
         this.pos = this.initialpos;
     }
 }
 
-// Деньги на основе все того же Actor
+// Бонусы
 class Coin extends Actor {
     constructor(position = new Vector(0, 0)) {
         super(position.plus(new Vector(0.2, 0.1)), new Vector(0.6, 0.6));
@@ -271,7 +267,7 @@ class Coin extends Actor {
     }
 }
 
-// Сам игрок
+// Игрок
 class Player extends Actor {
     constructor(position = new Vector(0, 0)) {
         super(position.plus(new Vector(0, -0.5)), new Vector(0.8, 1.5), new Vector(0, 0));
@@ -285,7 +281,7 @@ class Player extends Actor {
 const schemas = loadLevels();
 
 const actorDict = {
-    //'v': FireRain, // бесит - первый уровень не пройти
+    'v': FireRain,
     '@': Player,
     '=': HorizontalFireball,
     'o': Coin,
@@ -295,5 +291,5 @@ const actorDict = {
 const parser = new LevelParser(actorDict);
 
 schemas.then(result => {
-    runGame(JSON.parse(result), parser, DOMDisplay).then(() => alert('Вы выиграли приз!'));
+    runGame(JSON.parse(result), parser, DOMDisplay).then(() => alert('Вы победили!'));
 });
